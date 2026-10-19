@@ -1,37 +1,58 @@
+
 name: cicd bro
+
 on:
   push:
-    branch:
+    branches:
       - main
   workflow_dispatch:
+
 jobs:
   cicd-job:
     runs-on: ubuntu-latest
+
     steps:
-      - name: checkout-step
+      # 1. Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v6
-      - name: Build an image from Dockerfile
+
+      # 2. Build Docker image
+      - name: Build Docker Image
         run: |
-          docker build -t debabratap/my-app:${{ github.sha }} -t debabratap/my-app:latest .
-      - name: trivy scan
+          docker build \
+            -t my-app:${{ github.sha }} \
+            -t my-app:latest \
+            .
+
+      # 3. Scan image for vulnerabilities
+      - name: Trivy Security Scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: 'debabratap/my-app:${{ github.sha }}'
-          format: 'table'
+          image-ref: my-app:${{ github.sha }}
+          format: table
           exit-code: '1'
           ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-      - name: Save Docker Image and Install dependency
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      # 4. Save image as a TAR archive
+      - name: Save Docker Image
         run: |
           docker save my-app:${{ github.sha }} -o my-app.tar
-          sudo apt-get update
-          sudo apt-get install -y openssh-client
-      - name: ssh into server
-	run: |
-	  echo "${{ secrets.VPS_PASSWORD }}"| scp my-app.tar ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}: "docker load -i /tmp/my-app.tar &&
-             docker rm -f my-app 2>/dev/null || true"
-      - name: Execute remote SSH commands using password
+
+      # 5. Copy TAR archive to VPS
+      - name: Copy Image to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          source: my-app.tar
+          target: /tmp/
+
+      # 6. Load image and deploy container
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -39,4 +60,26 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: 22
           script: |
-	    pwd | docker ps
+            set -e
+
+            echo "Loading Docker image..."
+            docker load -i /tmp/my-app.tar
+
+            echo "Removing old container if it exists..."
+            docker rm -f my-app || true
+
+            echo "Starting new container..."
+            docker run -d \
+              --name my-app \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              my-app:${{ github.sha }}
+
+            echo "Checking container status..."
+            docker ps --filter name=my-app
+
+            echo "Removing temporary image archive..."
+            rm -f /tmp/my-app.tar
+
+            echo "Deployment completed!"
+
