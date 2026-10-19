@@ -2,6 +2,7 @@
 name: Echo to CI World
 
 on:
+  push: [main]
   workflow_dispatch:
 
 jobs:
