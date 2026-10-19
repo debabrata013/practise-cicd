@@ -1,0 +1,42 @@
+name: cicd bro
+on:
+  push:
+    branch:
+      - main
+  workflow_dispatch:
+jobs:
+  cicd-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout-step
+        uses: actions/checkout@v6
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t debabratap/my-app:${{ github.sha }} -t debabratap/my-app:latest .
+      - name: trivy scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 'debabratap/my-app:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+      - name: Save Docker Image and Install dependency
+        run: |
+          docker save my-app:${{ github.sha }} -o my-app.tar
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
+      - name: ssh into server
+	run: |
+	  echo "${{ secrets.VPS_PASSWORD }}"| scp my-app.tar ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}: "docker load -i /tmp/my-app.tar &&
+             docker rm -f my-app 2>/dev/null || true"
+      - name: Execute remote SSH commands using password
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script: |
+	    pwd | docker ps
