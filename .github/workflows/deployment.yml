@@ -1,5 +1,5 @@
 
-name: cicd bro
+name: VPS CI/CD
 
 on:
   push:
@@ -8,51 +8,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  cicd-job:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
-      - name: Checkout Code
-        uses: actions/checkout@v6
-
-      # 2. Build Docker image
-      - name: Build Docker Image
-        run: |
-          ls -l 
-          docker build \
-            -t my-app:${{ github.sha }} \
-            -t my-app:latest \
-            .
-
-      # # 3. Scan image for vulnerabilities
-      # - name: Trivy Security Scan
-      #   uses: aquasecurity/trivy-action@v0.36.0
-      #   with:
-      #     image-ref: my-app:${{ github.sha }}
-      #     format: table
-      #     exit-code: '1'
-      #     ignore-unfixed: true
-      #     vuln-type: os,library
-      #     severity: CRITICAL,HIGH
-
-      # 4. Save image as a TAR archive
-      - name: Save Docker Image
-        run: |
-          docker save my-app:${{ github.sha }} -o my-app.tar
-
-      # 5. Copy TAR archive to VPS
-      - name: Copy Image to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: 22
-          source: my-app.tar
-          target: /tmp/
-
-      # 6. Load image and deploy container
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1
         with:
@@ -63,24 +22,33 @@ jobs:
           script: |
             set -e
 
-            echo "Loading Docker image..."
-            docker load -i /tmp/my-app.tar
+            cd /opt/my-app
 
-            echo "Removing old container if it exists..."
-            docker rm -f my-app || true
+            echo "Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
 
-            echo "Starting new container..."
+            VERSION=$(git rev-parse --short HEAD)
+            IMAGE="my-app:$VERSION"
+
+            echo "Building version: $VERSION"
+            docker build \
+              -t "$IMAGE" \
+              -t my-app:latest \
+              .
+
+            echo "Stopping old container..."
+            docker rm -f my-app 2>/dev/null || true
+
+            echo "Starting version: $VERSION"
             docker run -d \
               --name my-app \
               --restart unless-stopped \
-              -p 3007:3000 \
-              my-app:${{ github.sha }}
-
-            echo "Checking container status..."
-            docker ps --filter name=my-app
-
-            echo "Removing temporary image archive..."
-            rm -f /tmp/my-app.tar
+              -p 3000:3000 \
+              "$IMAGE"
 
             echo "Deployment completed!"
+            docker ps --filter name=my-app
 
+            echo "Available image versions:"
+            docker images my-app
