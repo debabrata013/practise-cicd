@@ -1,10 +1,13 @@
-name: echo to ci world
+
+name: Echo to CI World
 
 on:
   workflow_dispatch:
+
 jobs:
   echo-job:
     runs-on: ubuntu-latest
+
     steps:
       - name: Say Hello
         run: echo "Hello World from GitHub Actions!"
@@ -12,14 +15,25 @@ jobs:
       - name: Show Current Date
         run: date
 
-      - name: Show Runner OS
-        run: echo "Running on GitHub Actions"	
-      - name: Checkout-steps
-        uses: actions/checkout@v6
-      - name: scp step
+      - name: Install sshpass
         run: |
-	 echo "dev123" | scp -r dev@82.112.236.170:/opt/devops-templates/ .
-      - name: check
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Download Files from VPS
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-	  cd devops-templates 
-	  ls	
+          sshpass -e scp \
+            -o StrictHostKeyChecking=accept-new \
+            -r "$VPS_USER@$VPS_HOST:/opt/devops-templates" \
+            .
+
+      - name: Check Downloaded Files
+        run: |
+          cd devops-templates
+          pwd
+          ls -la
+
