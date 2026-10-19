@@ -14,7 +14,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm i --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/server.js ./server.js
 
