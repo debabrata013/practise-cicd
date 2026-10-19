@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 # Install ALL dependencies (including devDependencies if you use a build step later)
-RUN npm ci
+RUN npm i
 
 COPY . .
 
@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm i --only=production
 
 # Copy source files from the host or build stage
 COPY --from=builder /usr/src/app/server.js ./server.js
