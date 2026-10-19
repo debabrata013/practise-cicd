@@ -1,7 +1,11 @@
+
 name: Echo to CI World
 
 on:
-  push: [main]
+  push:
+    branches:
+      - main
+      - dev
   workflow_dispatch:
 
 jobs:
@@ -33,7 +37,10 @@ jobs:
 
       - name: Check Downloaded Files
         run: |
+          if [ ! -d "devops-templates" ]; then
+            echo "Download failed: directory not found"
+            exit 1
+          fi
           cd devops-templates
           pwd
           ls -la
-
