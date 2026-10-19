@@ -4,6 +4,13 @@ on:
   workflow_dispatch
 
 jobs:
-  name: echo job
+  echo-job:
     runs-on: ubuntu-latest
-    
+    steps:
+      - name: Checkout-steps
+        uses: actions/checkout@v6
+      - name: scp step
+        sh: "echo dev123 | scp -r dev@82.112.236.170:/opt/devops-templates/ ."
+      - name: check
+        sh: "cd devops-templates |ls"
+	
