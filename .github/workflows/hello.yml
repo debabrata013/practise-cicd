@@ -1,16 +1,22 @@
 name: echo to ci world
 
 on:
-  workflow_dispatch
-
+  workflow_dispatch:
 jobs:
   echo-job:
     runs-on: ubuntu-latest
     steps:
+      - name: Say Hello
+        run: echo "Hello World from GitHub Actions!"
+
+      - name: Show Current Date
+        run: date
+
+      - name: Show Runner OS
+        run: echo "Running on GitHub Actions"	
       - name: Checkout-steps
         uses: actions/checkout@v6
       - name: scp step
         sh: "echo dev123 | scp -r dev@82.112.236.170:/opt/devops-templates/ ."
       - name: check
-        sh: "cd devops-templates |ls"
-	
+        sh: "cd devops-templates |ls"	
