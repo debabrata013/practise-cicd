@@ -1,0 +1,9 @@
+name: echo to ci world
+
+on:
+  workflow_dispatch
+
+jobs:
+  name: echo job
+    runs-on: ubuntu-latest
+    
