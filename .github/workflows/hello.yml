@@ -1,0 +1,46 @@
+
+name: Echo to CI World
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  echo-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Say Hello
+        run: echo "Hello World from GitHub Actions!"
+
+      - name: Show Current Date
+        run: date
+
+      - name: Install sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Download Files from VPS
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          sshpass -e scp \
+            -o StrictHostKeyChecking=accept-new \
+            -r "$VPS_USER@$VPS_HOST:/opt/devops-templates" \
+            .
+
+      - name: Check Downloaded Files
+        run: |
+          if [ ! -d "devops-templates" ]; then
+            echo "Download failed: directory not found"
+            exit 1
+          fi
+          cd devops-templates
+          pwd
+          ls -la
